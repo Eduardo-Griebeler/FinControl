@@ -40,7 +40,7 @@ O FinControl tem como objetivo auxiliar no controle das finanças pessoais, perm
 
 ## Banco de dados
 
-O projeto utiliza MySQL. O script de criação do banco de dados será disponibilizado neste repositório para permitir a configuração do sistema.
+O projeto utiliza MySQL. O script de criação do banco de dados está disponibilizado neste repositório para permitir a configuração do sistema.
 
 ## Autor
 
