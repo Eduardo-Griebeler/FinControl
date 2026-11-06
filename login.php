@@ -5,30 +5,47 @@ include 'includes/conexao.php';
 
 if (isset($_POST['entrar'])) {
 
-    $email = $_POST['email'];
+    $email = trim($_POST['email']);
     $senha = $_POST['senha'];
 
-    $sql = "SELECT * FROM usuarios WHERE email = '$email'";
-    $resultado = mysqli_query($conn, $sql);
+    // Consulta segura utilizando prepared statement
+    $sql = "SELECT id, nome, senha FROM usuarios WHERE email = ? LIMIT 1";
 
-    if (mysqli_num_rows($resultado) == 1) {
+    $stmt = mysqli_prepare($conn, $sql);
 
+    if ($stmt) {
+
+        mysqli_stmt_bind_param($stmt, "s", $email);
+        mysqli_stmt_execute($stmt);
+
+        $resultado = mysqli_stmt_get_result($stmt);
         $usuario = mysqli_fetch_assoc($resultado);
 
-        if (password_verify($senha, $usuario['senha'])) {
+        if ($usuario && password_verify($senha, $usuario['senha'])) {
+
+            // Gera um novo identificador de sessão após o login
+            session_regenerate_id(true);
 
             $_SESSION['id'] = $usuario['id'];
             $_SESSION['nome'] = $usuario['nome'];
+
+            mysqli_stmt_close($stmt);
 
             header("Location: dashboard.php");
             exit();
 
         } else {
-            $erro = "Senha incorreta!";
+
+            $erro = "E-mail ou senha inválidos.";
+
         }
 
+        mysqli_stmt_close($stmt);
+
     } else {
-        $erro = "Usuário não encontrado!";
+
+        $erro = "Não foi possível realizar o login. Tente novamente.";
+
     }
 }
 ?>
@@ -144,7 +161,7 @@ body{
 
     <?php if(isset($erro)){ ?>
         <div class="erro">
-            <?php echo $erro; ?>
+            <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
         </div>
     <?php } ?>
 
