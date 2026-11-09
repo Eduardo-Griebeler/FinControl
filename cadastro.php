@@ -1,25 +1,77 @@
+
 <?php
 
 include 'includes/conexao.php';
 
-if(isset($_POST['cadastrar'])){
+if (isset($_POST['cadastrar'])) {
 
-    $nome = $_POST['nome'];
-    $email = $_POST['email'];
+    $nome = trim($_POST['nome'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $senhaDigitada = $_POST['senha'] ?? '';
 
-    $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
+    if (empty($nome) || empty($email) || empty($senhaDigitada)) {
 
-    $sql = "INSERT INTO usuarios (nome, email, senha)
-            VALUES ('$nome', '$email', '$senha')";
+        $erro = "Preencha todos os campos.";
 
-    if(mysqli_query($conn, $sql)){
-        $sucesso = "Usuário cadastrado com sucesso!";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+        $erro = "Informe um e-mail válido.";
+
     } else {
-        $erro = "Este e-mail já está cadastrado.";
+
+        // Protege a senha utilizando hash
+        $senha = password_hash($senhaDigitada, PASSWORD_DEFAULT);
+
+        // Consulta preparada para evitar SQL Injection
+        $sql = "INSERT INTO usuarios (nome, email, senha)
+                VALUES (?, ?, ?)";
+
+        $stmt = null;
+
+        try {
+
+            $stmt = mysqli_prepare($conn, $sql);
+
+            if ($stmt) {
+
+                mysqli_stmt_bind_param($stmt, "sss", $nome, $email, $senha);
+
+                if (mysqli_stmt_execute($stmt)) {
+
+                    $sucesso = "Usuário cadastrado com sucesso!";
+
+                }
+
+            } else {
+
+                $erro = "Não foi possível preparar o cadastro.";
+
+            }
+
+        } catch (mysqli_sql_exception $e) {
+
+            if ($e->getCode() == 1062) {
+
+                $erro = "Este e-mail já está cadastrado.";
+
+            } else {
+
+                $erro = "Erro no cadastro. Código: " . $e->getCode();
+
+            }
+
+        } finally {
+
+            if ($stmt instanceof mysqli_stmt) {
+                mysqli_stmt_close($stmt);
+            }
+
+        }
     }
 }
 
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -140,16 +192,16 @@ body{
     </div>
 
     <?php if(isset($erro)){ ?>
-        <div class="erro">
-            <?php echo $erro; ?>
-        </div>
-    <?php } ?>
+    <div class="erro">
+        <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
+<?php } ?>
 
-    <?php if(isset($sucesso)){ ?>
-        <div class="sucesso">
-            <?php echo $sucesso; ?>
-        </div>
-    <?php } ?>
+<?php if(isset($sucesso)){ ?>
+    <div class="sucesso">
+        <?php echo htmlspecialchars($sucesso, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
+<?php } ?>
 
     <form method="POST">
 
