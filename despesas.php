@@ -26,8 +26,7 @@ if (isset($_POST['salvar'])) {
 
         $erro = "Preencha todos os campos.";
 
-    } elseif (!is_numeric($valor) || (float)$valor <= 0) {
-
+   } elseif (!is_numeric($valor) || (float)$valor < 0.01) {
         $erro = "Informe um valor maior que zero.";
 
     } else {
