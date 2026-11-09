@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 
@@ -8,22 +9,70 @@ if (!isset($_SESSION['id'])) {
 
 include 'includes/conexao.php';
 
-if(isset($_POST['salvar'])){
+if (isset($_POST['salvar'])) {
 
-    $usuario_id = $_SESSION['id'];
-    $descricao = $_POST['descricao'];
-    $valor = $_POST['valor'];
-    $data = $_POST['data'];
+    $usuario_id = (int) $_SESSION['id'];
+    $descricao = trim($_POST['descricao'] ?? '');
+    $valor = $_POST['valor'] ?? '';
+    $data = $_POST['data'] ?? '';
 
-    $sql = "INSERT INTO receitas
-            (usuario_id, descricao, valor, data_receita)
-            VALUES
-            ('$usuario_id', '$descricao', '$valor', '$data')";
+    if ($descricao === '' || $valor === '' || $data === '') {
 
-    if(mysqli_query($conn, $sql)){
-        $sucesso = "✅ Receita cadastrada com sucesso!";
+        $erro = "Preencha todos os campos.";
+
+    } elseif (!is_numeric($valor) || (float)$valor <= 0) {
+
+        $erro = "Informe um valor maior que zero.";
+
     } else {
-        $erro = "❌ Erro ao cadastrar receita.";
+
+        // Consulta preparada para evitar SQL Injection
+        $sql = "INSERT INTO receitas
+                (usuario_id, descricao, valor, data_receita)
+                VALUES (?, ?, ?, ?)";
+
+        $stmt = null;
+
+        try {
+
+            $stmt = mysqli_prepare($conn, $sql);
+
+            if ($stmt) {
+
+                $valor = (float) $valor;
+
+                mysqli_stmt_bind_param(
+                    $stmt,
+                    "isds",
+                    $usuario_id,
+                    $descricao,
+                    $valor,
+                    $data
+                );
+
+                if (mysqli_stmt_execute($stmt)) {
+
+                    $sucesso = "Receita cadastrada com sucesso!";
+
+                }
+
+            } else {
+
+                $erro = "Não foi possível preparar o cadastro da receita.";
+
+            }
+
+        } catch (mysqli_sql_exception $e) {
+
+            $erro = "Não foi possível cadastrar a receita. Tente novamente.";
+
+        } finally {
+
+            if ($stmt instanceof mysqli_stmt) {
+                mysqli_stmt_close($stmt);
+            }
+
+        }
     }
 }
 ?>
@@ -126,7 +175,7 @@ function toggleDarkMode() {
 
         <p>
             Olá,
-            <strong><?php echo $_SESSION['nome']; ?></strong>
+            <strong><?php echo htmlspecialchars($_SESSION['nome'], ENT_QUOTES, 'UTF-8'); ?></strong>
         </p>
 
         <br>
@@ -140,16 +189,16 @@ function toggleDarkMode() {
     <div class="card form-container">
 
         <?php if(isset($sucesso)){ ?>
-            <div class="sucesso">
-                <?php echo $sucesso; ?>
-            </div>
-        <?php } ?>
+    <div class="sucesso">
+        <?php echo htmlspecialchars($sucesso, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
+<?php } ?>
 
-        <?php if(isset($erro)){ ?>
-            <div class="erro">
-                <?php echo $erro; ?>
-            </div>
-        <?php } ?>
+<?php if(isset($erro)){ ?>
+    <div class="erro">
+        <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
+<?php } ?>
 
         <form method="POST">
 
@@ -166,9 +215,10 @@ function toggleDarkMode() {
                 <label>Valor (R$)</label>
 
                 <input type="number"
-                       step="0.01"
-                       name="valor"
-                       required>
+       step="0.01"
+       min="0.01"
+       name="valor"
+       required>
             </div>
 
             <div class="form-group">
