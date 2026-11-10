@@ -8,41 +8,103 @@ if (!isset($_SESSION['id'])) {
 
 include 'includes/conexao.php';
 
-$usuario_id = $_SESSION['id'];
+$usuario_id = (int) $_SESSION['id'];
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
-$id = $_GET['id'];
+if (!$id || $id <= 0) {
+    die("Despesa não encontrada.");
+}
 
+// Busca a despesa com consulta preparada
 $sql = "SELECT * FROM despesas
-        WHERE id = '$id'
-        AND usuario_id = '$usuario_id'";
+        WHERE id = ?
+        AND usuario_id = ?";
 
-$resultado = mysqli_query($conn, $sql);
+$stmt = mysqli_prepare($conn, $sql);
 
+if (!$stmt) {
+    die("Não foi possível consultar a despesa.");
+}
+
+mysqli_stmt_bind_param($stmt, "ii", $id, $usuario_id);
+mysqli_stmt_execute($stmt);
+
+$resultado = mysqli_stmt_get_result($stmt);
 $despesa = mysqli_fetch_assoc($resultado);
+
+mysqli_stmt_close($stmt);
 
 if (!$despesa) {
     die("Despesa não encontrada.");
 }
 
-if(isset($_POST['salvar'])){
+// Atualiza a despesa
+if (isset($_POST['salvar'])) {
 
-    $descricao = $_POST['descricao'];
-    $valor = $_POST['valor'];
-    $data = $_POST['data'];
+    $descricao = trim($_POST['descricao'] ?? '');
+    $valor = $_POST['valor'] ?? '';
+    $data = $_POST['data'] ?? '';
 
-    $sqlUpdate = "UPDATE despesas
-                  SET descricao = '$descricao',
-                      valor = '$valor',
-                      data_despesa = '$data'
-                  WHERE id = '$id'
-                  AND usuario_id = '$usuario_id'";
+    if ($descricao === '' || $valor === '' || $data === '') {
 
-    if(mysqli_query($conn, $sqlUpdate)){
-        header("Location: historico.php");
-        exit();
+        $erro = "Preencha todos os campos.";
+
+    } elseif (!is_numeric($valor) || (float)$valor < 0.01) {
+
+        $erro = "Informe um valor maior ou igual a R$ 0,01.";
+
+    } else {
+
+        $valor = (float) $valor;
+
+        $sqlUpdate = "UPDATE despesas
+                      SET descricao = ?,
+                          valor = ?,
+                          data_despesa = ?
+                      WHERE id = ?
+                      AND usuario_id = ?";
+
+        $stmtUpdate = null;
+
+        try {
+
+            $stmtUpdate = mysqli_prepare($conn, $sqlUpdate);
+
+            if ($stmtUpdate) {
+
+                mysqli_stmt_bind_param(
+                    $stmtUpdate,
+                    "sdsii",
+                    $descricao,
+                    $valor,
+                    $data,
+                    $id,
+                    $usuario_id
+                );
+
+                if (mysqli_stmt_execute($stmtUpdate)) {
+                    mysqli_stmt_close($stmtUpdate);
+                    header("Location: historico.php");
+                    exit();
+                }
+
+                $erro = "Erro ao atualizar despesa.";
+
+            } else {
+                $erro = "Não foi possível preparar a atualização.";
+            }
+
+        } catch (mysqli_sql_exception $e) {
+
+            $erro = "Não foi possível atualizar a despesa. Tente novamente.";
+
+        } finally {
+
+            if ($stmtUpdate instanceof mysqli_stmt) {
+                mysqli_stmt_close($stmtUpdate);
+            }
+        }
     }
-
-    $erro = "Erro ao atualizar despesa.";
 }
 ?>
 
@@ -99,10 +161,10 @@ if(isset($_POST['salvar'])){
     <div class="card form-container">
 
         <?php if(isset($erro)){ ?>
-            <div class="erro">
-                <?php echo $erro; ?>
-            </div>
-        <?php } ?>
+    <div class="erro">
+        <?php echo htmlspecialchars($erro, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
+<?php } ?>
 
         <form method="POST">
 
@@ -110,24 +172,25 @@ if(isset($_POST['salvar'])){
                 <label>Descrição</label>
                 <input type="text"
                        name="descricao"
-                       value="<?php echo $despesa['descricao']; ?>"
+                       value="<?php echo htmlspecialchars($despesa['descricao'], ENT_QUOTES, 'UTF-8'); ?>"
                        required>
             </div>
 
             <div class="form-group">
                 <label>Valor</label>
                 <input type="number"
-                       step="0.01"
-                       name="valor"
-                       value="<?php echo $despesa['valor']; ?>"
-                       required>
+       step="0.01"
+       min="0.01"
+       name="valor"
+       value="<?php echo htmlspecialchars($despesa['valor'], ENT_QUOTES, 'UTF-8'); ?>"
+       required>
             </div>
 
             <div class="form-group">
                 <label>Data</label>
                 <input type="date"
                        name="data"
-                       value="<?php echo $despesa['data_despesa']; ?>"
+                       value="<?php echo htmlspecialchars($despesa['data_despesa'], ENT_QUOTES, 'UTF-8'); ?>"
                        required>
             </div>
 
