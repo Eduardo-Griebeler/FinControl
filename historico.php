@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 
@@ -8,7 +9,19 @@ if (!isset($_SESSION['id'])) {
 
 include 'includes/conexao.php';
 
-$usuario_id = $_SESSION['id'];
+$usuario_id = (int) $_SESSION['id'];
+
+$mes = isset($_GET['mes']) ? (int) $_GET['mes'] : 0;
+$ano = isset($_GET['ano']) ? (int) $_GET['ano'] : 0;
+
+// Valida os filtros
+if ($mes < 1 || $mes > 12) {
+    $mes = 0;
+}
+
+if ($ano < 2000 || $ano > 2100) {
+    $ano = 0;
+}
 
 $sql = "
 SELECT
@@ -18,7 +31,9 @@ SELECT
     valor,
     data_receita AS data_lancamento
 FROM receitas
-WHERE usuario_id = '$usuario_id'
+WHERE usuario_id = ?
+AND (? = 0 OR MONTH(data_receita) = ?)
+AND (? = 0 OR YEAR(data_receita) = ?)
 
 UNION ALL
 
@@ -29,13 +44,39 @@ SELECT
     valor,
     data_despesa AS data_lancamento
 FROM despesas
-WHERE usuario_id = '$usuario_id'
+WHERE usuario_id = ?
+AND (? = 0 OR MONTH(data_despesa) = ?)
+AND (? = 0 OR YEAR(data_despesa) = ?)
 
 ORDER BY data_lancamento DESC
 ";
 
-$resultado = mysqli_query($conn, $sql);
+$stmt = mysqli_prepare($conn, $sql);
+
+if (!$stmt) {
+    die("Não foi possível consultar o histórico.");
+}
+
+mysqli_stmt_bind_param(
+    $stmt,
+    "iiiiiiiiii",
+    $usuario_id,
+    $mes,
+    $mes,
+    $ano,
+    $ano,
+    $usuario_id,
+    $mes,
+    $mes,
+    $ano,
+    $ano
+);
+
+mysqli_stmt_execute($stmt);
+
+$resultado = mysqli_stmt_get_result($stmt);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -158,7 +199,7 @@ td{
 
         <p>
             Bem-vindo,
-            <strong><?php echo $_SESSION['nome']; ?></strong>
+            <strong><?php echo htmlspecialchars($_SESSION['nome'], ENT_QUOTES, 'UTF-8'); ?></strong>
         </p>
 
         <br>
@@ -171,7 +212,42 @@ td{
 
     <div class="card">
 
-        <table>
+    <h3>Filtrar histórico</h3>
+
+    <form method="GET" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+
+        <select name="mes">
+            <option value="0">Todos os meses</option>
+            <option value="1" <?php if($mes == 1) echo 'selected'; ?>>Janeiro</option>
+            <option value="2" <?php if($mes == 2) echo 'selected'; ?>>Fevereiro</option>
+            <option value="3" <?php if($mes == 3) echo 'selected'; ?>>Março</option>
+            <option value="4" <?php if($mes == 4) echo 'selected'; ?>>Abril</option>
+            <option value="5" <?php if($mes == 5) echo 'selected'; ?>>Maio</option>
+            <option value="6" <?php if($mes == 6) echo 'selected'; ?>>Junho</option>
+            <option value="7" <?php if($mes == 7) echo 'selected'; ?>>Julho</option>
+            <option value="8" <?php if($mes == 8) echo 'selected'; ?>>Agosto</option>
+            <option value="9" <?php if($mes == 9) echo 'selected'; ?>>Setembro</option>
+            <option value="10" <?php if($mes == 10) echo 'selected'; ?>>Outubro</option>
+            <option value="11" <?php if($mes == 11) echo 'selected'; ?>>Novembro</option>
+            <option value="12" <?php if($mes == 12) echo 'selected'; ?>>Dezembro</option>
+        </select>
+
+        <input
+            type="number"
+            name="ano"
+            placeholder="Ano (ex: 2026)"
+            min="2000"
+            max="2100"
+            value="<?php echo $ano > 0 ? $ano : ''; ?>"
+        >
+
+        <button type="submit" class="botao">Filtrar</button>
+
+        <a href="historico.php" class="botao">Limpar filtros</a>
+
+    </form>
+
+    <table>
 
             <tr>
                 <th>Tipo</th>
@@ -186,11 +262,11 @@ td{
             <tr>
 
                 <td class="<?php echo strtolower($linha['tipo']); ?>">
-                    <?php echo $linha['tipo']; ?>
+                    <?php echo htmlspecialchars($linha['tipo'], ENT_QUOTES, 'UTF-8'); ?>
                 </td>
 
                 <td>
-                    <?php echo $linha['descricao']; ?>
+                    <?php echo htmlspecialchars($linha['descricao'], ENT_QUOTES, 'UTF-8'); ?>
                 </td>
 
                 <td>
