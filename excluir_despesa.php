@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 
@@ -8,14 +9,27 @@ if (!isset($_SESSION['id'])) {
 
 include 'includes/conexao.php';
 
-$id = $_GET['id'];
-$usuario_id = $_SESSION['id'];
+$usuario_id = (int) $_SESSION['id'];
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
+// Verifica se o ID é válido
+if (!$id || $id <= 0) {
+    header("Location: historico.php");
+    exit();
+}
+
+// Exclui somente a despesa pertencente ao usuário logado
 $sql = "DELETE FROM despesas
-        WHERE id = '$id'
-        AND usuario_id = '$usuario_id'";
+        WHERE id = ?
+        AND usuario_id = ?";
 
-mysqli_query($conn, $sql);
+$stmt = mysqli_prepare($conn, $sql);
+
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, "ii", $id, $usuario_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+}
 
 header("Location: historico.php");
 exit();
