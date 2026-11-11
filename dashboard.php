@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 
@@ -8,106 +9,141 @@ if (!isset($_SESSION['id'])) {
 
 include 'includes/conexao.php';
 
-$usuario_id = $_SESSION['id'];
+$usuario_id = (int) $_SESSION['id'];
 
-/* RECEITAS */
-$sqlReceitas = "SELECT SUM(valor) AS total
+// RECEITAS: total e quantidade
+$sqlReceitas = "SELECT SUM(valor) AS total, COUNT(*) AS quantidade
                 FROM receitas
-                WHERE usuario_id='$usuario_id'";
+                WHERE usuario_id = ?";
 
-$resReceitas = mysqli_query($conn, $sqlReceitas);
+$stmt = mysqli_prepare($conn, $sqlReceitas);
+mysqli_stmt_bind_param($stmt, "i", $usuario_id);
+mysqli_stmt_execute($stmt);
+$resReceitas = mysqli_stmt_get_result($stmt);
 $receitas = mysqli_fetch_assoc($resReceitas);
+mysqli_stmt_close($stmt);
 
-$totalReceitas = $receitas['total'] ?? 0;
-$sqlQtdReceitas = "SELECT COUNT(*) AS total
-                   FROM receitas
-                   WHERE usuario_id='$usuario_id'";
+$totalReceitas = (float) ($receitas['total'] ?? 0);
+$qtdReceitas = (int) ($receitas['quantidade'] ?? 0);
 
-$resQtdReceitas = mysqli_query($conn, $sqlQtdReceitas);
-$qtdReceitas = mysqli_fetch_assoc($resQtdReceitas)['total'];
-
-/* DESPESAS */
-$sqlDespesas = "SELECT SUM(valor) AS total
+// DESPESAS: total e quantidade
+$sqlDespesas = "SELECT SUM(valor) AS total, COUNT(*) AS quantidade
                 FROM despesas
-                WHERE usuario_id='$usuario_id'";
+                WHERE usuario_id = ?";
 
-$resDespesas = mysqli_query($conn, $sqlDespesas);
+$stmt = mysqli_prepare($conn, $sqlDespesas);
+mysqli_stmt_bind_param($stmt, "i", $usuario_id);
+mysqli_stmt_execute($stmt);
+$resDespesas = mysqli_stmt_get_result($stmt);
 $despesas = mysqli_fetch_assoc($resDespesas);
+mysqli_stmt_close($stmt);
 
-$totalDespesas = $despesas['total'] ?? 0;
-$sqlQtdDespesas = "SELECT COUNT(*) AS total
-                   FROM despesas
-                   WHERE usuario_id='$usuario_id'";
+$totalDespesas = (float) ($despesas['total'] ?? 0);
+$qtdDespesas = (int) ($despesas['quantidade'] ?? 0);
 
-$resQtdDespesas = mysqli_query($conn, $sqlQtdDespesas);
-$qtdDespesas = mysqli_fetch_assoc($resQtdDespesas)['total'];
-
-/* SALDO */
+// SALDO
 $saldo = $totalReceitas - $totalDespesas;
 
 $classeSaldo = $saldo >= 0
     ? 'saldo-positivo'
     : 'saldo-negativo';
 
-/* GRÁFICO RECEITAS */
-
+// GRÁFICO DE RECEITAS POR MÊS E ANO
 $sqlGraficoReceitas = "
 SELECT
-MONTH(data_receita) AS mes,
-SUM(valor) AS total
+    YEAR(data_receita) AS ano,
+    MONTH(data_receita) AS mes,
+    SUM(valor) AS total
 FROM receitas
-WHERE usuario_id='$usuario_id'
-GROUP BY MONTH(data_receita)
+WHERE usuario_id = ?
+GROUP BY YEAR(data_receita), MONTH(data_receita)
+ORDER BY ano, mes
 ";
 
-$resGraficoReceitas = mysqli_query($conn, $sqlGraficoReceitas);
+$stmt = mysqli_prepare($conn, $sqlGraficoReceitas);
+mysqli_stmt_bind_param($stmt, "i", $usuario_id);
+mysqli_stmt_execute($stmt);
+$resGraficoReceitas = mysqli_stmt_get_result($stmt);
 
-$receitasMes = array_fill(1, 12, 0);
+$receitasMes = [];
 
-while($linha = mysqli_fetch_assoc($resGraficoReceitas)){
-    $receitasMes[$linha['mes']] = $linha['total'];
+while ($linha = mysqli_fetch_assoc($resGraficoReceitas)) {
+    $periodo = $linha['ano'] . '-' . str_pad($linha['mes'], 2, '0', STR_PAD_LEFT);
+    $receitasMes[$periodo] = (float) $linha['total'];
 }
 
-/* GRÁFICO DESPESAS */
+mysqli_stmt_close($stmt);
 
+// GRÁFICO DE DESPESAS POR MÊS E ANO
 $sqlGraficoDespesas = "
 SELECT
-MONTH(data_despesa) AS mes,
-SUM(valor) AS total
+    YEAR(data_despesa) AS ano,
+    MONTH(data_despesa) AS mes,
+    SUM(valor) AS total
 FROM despesas
-WHERE usuario_id='$usuario_id'
-GROUP BY MONTH(data_despesa)
+WHERE usuario_id = ?
+GROUP BY YEAR(data_despesa), MONTH(data_despesa)
+ORDER BY ano, mes
 ";
 
-$resGraficoDespesas = mysqli_query($conn, $sqlGraficoDespesas);
+$stmt = mysqli_prepare($conn, $sqlGraficoDespesas);
+mysqli_stmt_bind_param($stmt, "i", $usuario_id);
+mysqli_stmt_execute($stmt);
+$resGraficoDespesas = mysqli_stmt_get_result($stmt);
 
-$despesasMes = array_fill(1, 12, 0);
+$despesasMes = [];
 
-while($linha = mysqli_fetch_assoc($resGraficoDespesas)){
-    $despesasMes[$linha['mes']] = $linha['total'];
+while ($linha = mysqli_fetch_assoc($resGraficoDespesas)) {
+    $periodo = $linha['ano'] . '-' . str_pad($linha['mes'], 2, '0', STR_PAD_LEFT);
+    $despesasMes[$periodo] = (float) $linha['total'];
 }
-/* GRÁFICO DE PIZZA - CATEGORIAS */
 
+mysqli_stmt_close($stmt);
+
+// ORGANIZA OS MESES E ANOS DOS DOIS GRÁFICOS
+$periodos = array_unique(array_merge(
+    array_keys($receitasMes),
+    array_keys($despesasMes)
+));
+
+sort($periodos);
+
+$labelsMensais = [];
+$dadosReceitas = [];
+$dadosDespesas = [];
+
+foreach ($periodos as $periodo) {
+    $labelsMensais[] = date('m/Y', strtotime($periodo . '-01'));
+    $dadosReceitas[] = $receitasMes[$periodo] ?? 0;
+    $dadosDespesas[] = $despesasMes[$periodo] ?? 0;
+}
+
+// GRÁFICO DE PIZZA - CATEGORIAS
 $sqlCategorias = "
 SELECT
     categoria,
     SUM(valor) AS total
 FROM despesas
-WHERE usuario_id='$usuario_id'
+WHERE usuario_id = ?
 GROUP BY categoria
 ";
 
-$resCategorias = mysqli_query($conn, $sqlCategorias);
+$stmt = mysqli_prepare($conn, $sqlCategorias);
+mysqli_stmt_bind_param($stmt, "i", $usuario_id);
+mysqli_stmt_execute($stmt);
+$resCategorias = mysqli_stmt_get_result($stmt);
 
 $categorias = [];
 $valoresCategorias = [];
 
-while($linha = mysqli_fetch_assoc($resCategorias)){
+while ($linha = mysqli_fetch_assoc($resCategorias)) {
     $categorias[] = $linha['categoria'];
-    $valoresCategorias[] = $linha['total'];
+    $valoresCategorias[] = (float) $linha['total'];
 }
 
+mysqli_stmt_close($stmt);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -176,7 +212,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 
 <p>
 Bem-vindo de volta,
-<strong><?php echo $_SESSION['nome']; ?></strong>
+<strong><?php echo htmlspecialchars($_SESSION['nome'], ENT_QUOTES, 'UTF-8'); ?></strong>
 </p>
 
 <br>
@@ -255,101 +291,85 @@ Bem-vindo de volta,
 
 </div>
 
-<script>
 
+<script>
 function toggleDarkMode() {
 
     document.body.classList.toggle('dark-mode');
 
     let botao = document.getElementById('btnModo');
 
-    if(document.body.classList.contains('dark-mode')){
-
+    if (document.body.classList.contains('dark-mode')) {
         botao.innerHTML = '☀️ Modo Claro';
-
-    }else{
-
+    } else {
         botao.innerHTML = '🌙 Modo Escuro';
-
     }
 }
 
+// Dados dos gráficos recebidos do PHP
+const labelsMensais = <?php
+echo json_encode($labelsMensais, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+?>;
+
+const dadosReceitas = <?php echo json_encode($dadosReceitas); ?>;
+
+const dadosDespesas = <?php echo json_encode($dadosDespesas); ?>;
+
+const categorias = <?php
+echo json_encode($categorias, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+?>;
+
+const valoresCategorias = <?php echo json_encode($valoresCategorias); ?>;
+
+// GRÁFICO MENSAL
 new Chart(
-document.getElementById('graficoMensal'),
-{
-    type:'bar',
+    document.getElementById('graficoMensal'),
+    {
+        type: 'bar',
 
-    data:{
+        data: {
+            labels: labelsMensais,
 
-        labels:[
-            'Jan',
-            'Fev',
-            'Mar',
-            'Abr',
-            'Mai',
-            'Jun',
-            'Jul',
-            'Ago',
-            'Set',
-            'Out',
-            'Nov',
-            'Dez'
-        ],
-
-        datasets:[
-
-        {
-            label:'Receitas',
-
-            data:[
-                <?php echo implode(',', $receitasMes); ?>
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: dadosReceitas
+                },
+                {
+                    label: 'Despesas',
+                    data: dadosDespesas
+                }
             ]
         },
 
-        {
-            label:'Despesas',
-
-            data:[
-                <?php echo implode(',', $despesasMes); ?>
-            ]
+        options: {
+            responsive: true,
+            maintainAspectRatio: true
         }
-
-        ]
-    },
-
-    options:{
-        responsive:true,
-        maintainAspectRatio:true
     }
-}
 );
+
+// GRÁFICO DE PIZZA
 new Chart(
-document.getElementById('graficoPizza'),
-{
-    type:'pie',
+    document.getElementById('graficoPizza'),
+    {
+        type: 'pie',
 
-    data:{
-        labels:[
-            <?php
-            foreach($categorias as $cat){
-                echo "'".$cat."',";
-            }
-            ?>
-        ],
+        data: {
+            labels: categorias,
 
-        datasets:[{
-            data:[
-                <?php echo implode(',', $valoresCategorias); ?>
-            ]
-        }]
-    },
+            datasets: [{
+                data: valoresCategorias
+            }]
+        },
 
-    options:{
-        responsive:true
+        options: {
+            responsive: true
+        }
     }
-}
 );
 </script>
+
 
 </body>
 </html>
