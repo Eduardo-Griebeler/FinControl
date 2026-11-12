@@ -293,18 +293,9 @@ Bem-vindo de volta,
 
 
 <script>
-function toggleDarkMode() {
 
-    document.body.classList.toggle('dark-mode');
 
-    let botao = document.getElementById('btnModo');
 
-    if (document.body.classList.contains('dark-mode')) {
-        botao.innerHTML = '☀️ Modo Claro';
-    } else {
-        botao.innerHTML = '🌙 Modo Escuro';
-    }
-}
 
 // Dados dos gráficos recebidos do PHP
 const labelsMensais = <?php
@@ -369,6 +360,8 @@ new Chart(
     }
 );
 </script>
+
+<script src="css/script.js"></script>
 
 
 </body>

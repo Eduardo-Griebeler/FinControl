@@ -178,6 +178,25 @@ body{
     text-decoration:none;
     font-weight:bold;
 }
+body.dark-mode {
+    background: #121212;
+    color: white;
+}
+
+.dark-mode .cadastro-container {
+    background: #1e1e1e;
+    color: white;
+}
+
+.dark-mode .form-group input {
+    background: #333;
+    color: white;
+    border-color: #555;
+}
+
+.dark-mode .form-group label {
+    color: white;
+}
 
 </style>
 
@@ -185,6 +204,9 @@ body{
 <body>
 
 <div class="cadastro-container">
+    <button type="button" id="btnModo" onclick="toggleDarkMode()">
+    🌙 Modo Escuro
+</button>
 
     <div class="logo">
         <h1>FinControl</h1>
@@ -232,6 +254,7 @@ body{
     </div>
 
 </div>
+<script src="css/script.js"></script>
 
 </body>
 </html><

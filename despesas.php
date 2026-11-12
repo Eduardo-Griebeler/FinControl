@@ -261,6 +261,7 @@ if (isset($_POST['salvar'])) {
         </div>
 
     </div>
+    <script src="css/script.js"></script>
 
 </body>
 </html>

@@ -335,3 +335,4 @@ td{
 <?php } ?>
 
 </table>
+    <script src="css/script.js"></script>
