@@ -56,7 +56,7 @@ if (isset($_POST['cadastrar'])) {
 
             } else {
 
-                $erro = "Erro no cadastro. Código: " . $e->getCode();
+                $erro = "Não foi possível realizar o cadastro. Tente novamente mais tarde.";
 
             }
 
@@ -234,4 +234,4 @@ body{
 </div>
 
 </body>
-</html>
+</html><
