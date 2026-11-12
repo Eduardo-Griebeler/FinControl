@@ -319,6 +319,7 @@ td{
                Editar
             </a>
 
+            
             <a class="excluir"
                href="excluir_despesa.php?id=<?php echo $linha['id']; ?>"
                onclick="return confirm('Deseja excluir esta despesa?')">
