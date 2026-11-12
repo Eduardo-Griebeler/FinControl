@@ -28,6 +28,7 @@ SELECT
     id,
     'Receita' AS tipo,
     descricao,
+    NULL AS categoria,
     valor,
     data_receita AS data_lancamento
 FROM receitas
@@ -41,6 +42,7 @@ SELECT
     id,
     'Despesa' AS tipo,
     descricao,
+    categoria,
     valor,
     data_despesa AS data_lancamento
 FROM despesas
@@ -247,77 +249,88 @@ td{
 
     </form>
 
-    <table>
+<table>
 
-            <tr>
-                <th>Tipo</th>
-                <th>Descrição</th>
-                <th>Valor</th>
-                <th>Data</th>
-                <th>Ações</th>
+    <tr>
+        <th>Tipo</th>
+        <th>Descrição</th>
+        <th>Categoria</th>
+        <th>Valor</th>
+        <th>Data</th>
+        <th>Ações</th>
+    </tr>
+            
+                
             </tr>
 
-            <?php while($linha = mysqli_fetch_assoc($resultado)) { ?>
+<?php while($linha = mysqli_fetch_assoc($resultado)) { ?>
 
-            <tr>
+<tr>
 
-                <td class="<?php echo strtolower($linha['tipo']); ?>">
-                    <?php echo htmlspecialchars($linha['tipo'], ENT_QUOTES, 'UTF-8'); ?>
-                </td>
+    <!-- Tipo -->
+    <td class="<?php echo strtolower($linha['tipo']); ?>">
+        <?php echo htmlspecialchars($linha['tipo'], ENT_QUOTES, 'UTF-8'); ?>
+    </td>
 
-                <td>
-                    <?php echo htmlspecialchars($linha['descricao'], ENT_QUOTES, 'UTF-8'); ?>
-                </td>
+    <!-- Descrição -->
+    <td>
+        <?php echo htmlspecialchars($linha['descricao'], ENT_QUOTES, 'UTF-8'); ?>
+    </td>
 
-                <td>
-                    R$ <?php echo number_format($linha['valor'], 2, ',', '.'); ?>
-                </td>
+    <!-- Categoria -->
+    <td>
+        <?php
+        echo $linha['tipo'] == 'Despesa'
+            ? htmlspecialchars($linha['categoria'] ?? '', ENT_QUOTES, 'UTF-8')
+            : '—';
+        ?>
+    </td>
 
-                <td>
-                    <?php echo date('d/m/Y', strtotime($linha['data_lancamento'])); ?>
-                </td>
+    <!-- Valor -->
+    <td>
+        R$ <?php echo number_format($linha['valor'], 2, ',', '.'); ?>
+    </td>
 
-                <td class="acoes">
+    <!-- Data -->
+    <td>
+        <?php echo date('d/m/Y', strtotime($linha['data_lancamento'])); ?>
+    </td>
 
-                    <?php if($linha['tipo'] == 'Receita') { ?>
+    <!-- Ações -->
+    <td class="acoes">
 
-                        <a class="editar"
-                           href="editar_receita.php?id=<?php echo $linha['id']; ?>">
-                           Editar
-                        </a>
+        <?php if($linha['tipo'] == 'Receita') { ?>
 
-                        <a class="excluir"
-                           href="excluir_receita.php?id=<?php echo $linha['id']; ?>"
-                           onclick="return confirm('Deseja excluir esta receita?')">
-                           Excluir
-                        </a>
+            <a class="editar"
+               href="editar_receita.php?id=<?php echo $linha['id']; ?>">
+               Editar
+            </a>
 
-                    <?php } else { ?>
+            <a class="excluir"
+               href="excluir_receita.php?id=<?php echo $linha['id']; ?>"
+               onclick="return confirm('Deseja excluir esta receita?')">
+               Excluir
+            </a>
 
-                        <a class="editar"
-                           href="editar_despesa.php?id=<?php echo $linha['id']; ?>">
-                           Editar
-                        </a>
+        <?php } else { ?>
 
-                        <a class="excluir"
-                           href="excluir_despesa.php?id=<?php echo $linha['id']; ?>"
-                           onclick="return confirm('Deseja excluir esta despesa?')">
-                           Excluir
-                        </a>
+            <a class="editar"
+               href="editar_despesa.php?id=<?php echo $linha['id']; ?>">
+               Editar
+            </a>
 
-                    <?php } ?>
+            <a class="excluir"
+               href="excluir_despesa.php?id=<?php echo $linha['id']; ?>"
+               onclick="return confirm('Deseja excluir esta despesa?')">
+               Excluir
+            </a>
 
-                </td>
+        <?php } ?>
 
-            </tr>
+    </td>
 
-            <?php } ?>
+</tr>
 
-        </table>
+<?php } ?>
 
-    </div>
-
-</div>
-
-</body>
-</html>
+</table>

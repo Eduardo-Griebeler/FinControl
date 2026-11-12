@@ -38,14 +38,16 @@ if (!$despesa) {
     die("Despesa não encontrada.");
 }
 
+
 // Atualiza a despesa
 if (isset($_POST['salvar'])) {
 
     $descricao = trim($_POST['descricao'] ?? '');
+    $categoria = trim($_POST['categoria'] ?? '');
     $valor = $_POST['valor'] ?? '';
     $data = $_POST['data'] ?? '';
 
-    if ($descricao === '' || $valor === '' || $data === '') {
+    if ($descricao === '' || $categoria === '' || $valor === '' || $data === '') {
 
         $erro = "Preencha todos os campos.";
 
@@ -59,6 +61,7 @@ if (isset($_POST['salvar'])) {
 
         $sqlUpdate = "UPDATE despesas
                       SET descricao = ?,
+                          categoria = ?,
                           valor = ?,
                           data_despesa = ?
                       WHERE id = ?
@@ -74,8 +77,9 @@ if (isset($_POST['salvar'])) {
 
                 mysqli_stmt_bind_param(
                     $stmtUpdate,
-                    "sdsii",
+                    "ssdsii",
                     $descricao,
+                    $categoria,
                     $valor,
                     $data,
                     $id,
@@ -106,6 +110,7 @@ if (isset($_POST['salvar'])) {
         }
     }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -133,7 +138,8 @@ if (isset($_POST['salvar'])) {
     font-weight:bold;
 }
 
-.form-group input{
+.form-group input,
+.form-group select {
     width:100%;
     padding:12px;
     border:1px solid #ccc;
@@ -175,6 +181,31 @@ if (isset($_POST['salvar'])) {
                        value="<?php echo htmlspecialchars($despesa['descricao'], ENT_QUOTES, 'UTF-8'); ?>"
                        required>
             </div>
+
+<div class="form-group">
+    <label>Categoria</label>
+
+    <select name="categoria" required>
+        <option value="">Selecione</option>
+
+        <option value="Mercado" <?php echo $despesa['categoria'] == 'Mercado' ? 'selected' : ''; ?>>🛒 Mercado</option>
+
+        <option value="Transporte" <?php echo $despesa['categoria'] == 'Transporte' ? 'selected' : ''; ?>>🚗 Transporte</option>
+
+        <option value="Internet" <?php echo $despesa['categoria'] == 'Internet' ? 'selected' : ''; ?>>🌐 Internet</option>
+
+        <option value="Saúde" <?php echo $despesa['categoria'] == 'Saúde' ? 'selected' : ''; ?>>🏥 Saúde</option>
+
+        <option value="Lazer" <?php echo $despesa['categoria'] == 'Lazer' ? 'selected' : ''; ?>>🎮 Lazer</option>
+
+        <option value="Moradia" <?php echo $despesa['categoria'] == 'Moradia' ? 'selected' : ''; ?>>🏠 Moradia</option>
+
+        <option value="Educação" <?php echo $despesa['categoria'] == 'Educação' ? 'selected' : ''; ?>>📚 Educação</option>
+
+        <option value="Outros" <?php echo $despesa['categoria'] == 'Outros' ? 'selected' : ''; ?>>📦 Outros</option>
+    </select>
+</div>
+
 
             <div class="form-group">
                 <label>Valor</label>
