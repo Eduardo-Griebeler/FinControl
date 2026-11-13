@@ -261,7 +261,7 @@ td{
     </tr>
             
                 
-            </tr>
+        
 
 <?php while($linha = mysqli_fetch_assoc($resultado)) { ?>
 
